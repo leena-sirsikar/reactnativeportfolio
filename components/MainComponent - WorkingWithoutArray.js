@@ -3,8 +3,6 @@ import React, { Component, useDebugValue } from 'react';
 import { View, Picker, Button, ActivityIndicator, Image } from 'react-native';
 import { Text } from 'react-native-elements';
 import { TextInput } from 'react-native-gesture-handler';
-import { connect } from 'react-redux';
-import { addHistory } from '../redux/actions';
 
 
 class MainComponent extends Component {
@@ -19,18 +17,18 @@ class MainComponent extends Component {
             loading: false,
             currencylist: [],
             newHistory: {
-                fromCurr: 'USD',
-                toCurr: 'EUR',
-                amount: '',
-                convertedAmount: ''
+                fromCurr: '',
+                toCurr: '',
+                amt: '',
+                convertedAmt: ''
             },
-            // historyList: [],
+            historyList: [],
             historybuilt: false,
             showhistory: false
         }
 
         this.convert = this.convert.bind(this);
-        // this.pullHistory = this.pullHistory.bind(this);
+        this.pullHistory = this.pullHistory.bind(this);
         this.addHistory = this.addHistory.bind(this);
         // this.currencyList = this.currencyList.bind(this);
 
@@ -58,7 +56,7 @@ class MainComponent extends Component {
 
     convert() {
         this.setState({loading: true});
-        fetch(`https://currency13.p.rapidapi.com/convert/${this.state.newHistory.amount}/${this.state.newHistory.fromCurr}/${this.state.newHistory.toCurr}`, {
+        fetch(`https://currency13.p.rapidapi.com/convert/${this.state.amount}/${this.state.from}/${this.state.to}`, {
             "method": "GET",
             "headers": {
                 "x-rapidapi-host": "currency13.p.rapidapi.com",
@@ -68,15 +66,8 @@ class MainComponent extends Component {
         .then(response => response.json())
         .then(data => {
             console.log("The Data Amount is: ", data);
-            console.log("Converted Amount: ", data.amount * this.state.newHistory.amount);
-            // this.setState({convertedAmount: data.amount * this.state.newHistory.amount});
-            this.setState(prevState => ({
-                newHistory: {
-                    ...prevState.newHistory, 
-                    convertedAmount: (data.amount * this.state.newHistory.amount)
-                }
-            })
-        );
+            console.log("Converted Amount: ", data.amount * this.state.amount);
+            this.setState({convertedAmount: data.amount * this.state.amount});
             this.setState({loading: false});
             console.log("History flag inside CONVERT: ", this.state.historybuilt);
             this.addHistory();
@@ -95,7 +86,7 @@ class MainComponent extends Component {
         this.setState({historybuilt: true});
         console.log("History flag after add history:", this.state.historybuilt);
         
-        fetch("http://10.0.2.2:3000/history", {
+        fetch("http://localhost:3000/history/123", {
             "method": "POST",
             "headers": {
                 'Accept': 'application/json',
@@ -105,32 +96,31 @@ class MainComponent extends Component {
         })
         .then(response => response.text())
         .then(data => {
-            // this.setState({historyList: [...this.state.historyList, this.state.newHistory] });
+            this.setState({historyList: [...this.state.historyList, this.state.newHistory] });
             // console.log("History List is: ", data.historyList);
-            this.props.addHistory(this.state.newHistory);
-            // console.log("Length of history list is: ", this.state.historyList);
+            console.log("Length of history list is: ", this.state.newHistory);
         })
         .catch(err => {
             console.log(err);
         });  
-        // console.log("The newHistory in the POST: ", this.state.historyList);  
+        console.log("The newHistory in the POST: ", this.state.newHistory);  
     }
   
-    // pullHistory() {
-    //     this.setState({showhistory: true});
-    //     fetch("http://10.0.2.2:3000/history", {
-    //         "method": "GET",
-    //     })
-    //     .then(response => response.json())
-    //     .then(data => {
-    //         // this.setState({historyList: data});
-    //         console.log("History List is: ", data);
-    //         console.log("Length of history list is: ", data.length);
-    //     })
-    //     .catch(err => {
-    //         console.log(err);
-    //     });        
-    // }
+    pullHistory() {
+        this.setState({showhistory: true});
+        fetch("http://localhost:3000/", {
+            "method": "GET",
+        })
+        .then(response => response.json())
+        .then(data => {
+            this.setState({historyList: data});
+            console.log("History List is: ", data);
+            console.log("Length of history list is: ", data.length);
+        })
+        .catch(err => {
+            console.log(err);
+        });        
+    }
 
     // 6/16: Leena added above to handle user authentication post
 
@@ -149,14 +139,14 @@ class MainComponent extends Component {
                         <TextInput 
                             placeholder='  Enter Amount Here...'
                             style={{height: 30, width: 150, borderWidth: 2, borderColor: 'grey' }}
-                            value={this.state.newHistory.amount}
-                            onChangeText={(amount) => this.setState({newHistory: {...this.state.newHistory, amount}})}
+                            value={this.state.amount}
+                            onChangeText={(amount) => this.setState({amount})}
                         />
                         <Text>{"\n"}</Text> 
                         <Picker
-                            selectedValue={this.state.newHistory.fromCurr}
+                            selectedValue={this.state.from}
                             style={{ height: 50, width: 150}}
-                            onValueChange={(fromCurr) => this.setState({newHistory: {...this.state.newHistory, fromCurr}})}
+                            onValueChange={(itemValue) => this.setState({from: itemValue})}
                         >
                             {this.state.currencylist.map((curr) =>
                                 <Picker.Item label={curr} value={curr} key={curr} />
@@ -164,9 +154,9 @@ class MainComponent extends Component {
 
                         </Picker>
                         <Picker
-                            selectedValue={this.state.newHistory.toCurr}
+                            selectedValue={this.state.to}
                             style={{ height: 50, width: 150}}
-                            onValueChange={(toCurr) => this.setState({newHistory: {...this.state.newHistory, toCurr}})}
+                            onValueChange={(itemValue) => this.setState({to: itemValue})}
                         >
                         {this.state.currencylist.map((curr) =>
                             <Picker.Item label={curr} value={curr} key={curr} />
@@ -188,22 +178,40 @@ class MainComponent extends Component {
                             <ActivityIndicator size="large" color="#841584" />
                         </View>
                     }
-                    {this.state.historybuilt &&
+                    {this.state.convertedAmount != null &&
                         <View>
-                                 
+                        <Button
+                            onPress={this.pullHistory}
+                            title="Show History"
+                            color="blue" />
+                
                             <Text>
-                                Converted Amount is {this.state.newHistory.convertedAmount} {this.state.newHistory.toCurr}
+                                Converted Amount is {this.state.convertedAmount} {this.state.to}
                             </Text>
                         </View>
                     }  
-                                 
+                    {
+                        this.state.showhistory && this.state.historybuilt ? 
+                        <View>
+                            <Text>
+                                Here is your conversion history: {"\n"}
+                                {this.state.historyList.map(history => {
+                                    <Text>
+                                        {history.convertedAmount}
+                                    </Text>
+                                })}
+                            </Text>
+                        </View>
+                        :
+                        <View>
+                            <Text>
+                                You do not have any history built yet!
+                            </Text>
+                        </View>
+                    }              
                 </View>
         );
     }
 }
 
-const mapDispatchToProps = {
-    addHistory
-};
-
-export default connect(null, mapDispatchToProps)(MainComponent);
+export default MainComponent;
